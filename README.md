@@ -14,3 +14,12 @@
 ## How to run the backend
 
 > UV managed project.
+
+You must sync first (`uv sync`)
+
+TO launch the server without docker, make sure you are at the root dir:
+
+```bash
+uv run fastapi dev app/main.py
+```
+
