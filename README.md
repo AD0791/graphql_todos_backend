@@ -23,3 +23,9 @@ TO launch the server without docker, make sure you are at the root dir:
 uv run fastapi dev app/main.py
 ```
 
+With Docker:
+
+```bash
+docker compose up --build
+```
+

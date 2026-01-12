@@ -1,0 +1,123 @@
+# =============================================================================
+# Docker Compose for GraphQL Todo API
+# =============================================================================
+# SERVICES:
+# - api:     FastAPI + Strawberry GraphQL backend
+# - db:      MySQL 8.0 database
+# - adminer: Database management UI
+#
+# ENVIRONMENT VARIABLES:
+# All configuration comes from .env file using consistent naming:
+# - DB_NAME, DB_USER, DB_PASSWORD for database configuration
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # API SERVICE - FastAPI + Strawberry GraphQL
+  # ===========================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: graphql-todos-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Database URL constructed from individual components
+      # Format: mysql+aiomysql://user:password@host:port/database
+      - DATABASE_URL=mysql+aiomysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}
+      # JWT Configuration
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - REFRESH_TOKEN_EXPIRE_DAYS=7
+      # Application Configuration
+      - DEBUG=${DEBUG:-false}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      # Superadmin Configuration
+      - SUPERADMIN_EMAIL=${SUPERADMIN_EMAIL}
+      - SUPERADMIN_PASSWORD=${SUPERADMIN_PASSWORD}
+      - SUPERADMIN_FULL_NAME=${SUPERADMIN_FULL_NAME}
+    env_file:
+      - .env
+    volumes:
+      # Development: mount source for hot reload
+      # In production, remove this volume mount
+      - ./app:/app/app
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - todos-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # ===========================================================================
+  # DATABASE SERVICE - MySQL 8.0
+  # ===========================================================================
+  db:
+    image: mysql:8.0
+    container_name: graphql-todos-db
+    environment:
+      # MySQL uses specific environment variable names
+      # We map our DB_* variables to MySQL's expected MYSQL_* variables
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-rootpassword}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      # Persist database data
+      - mysql_data:/var/lib/mysql
+    networks:
+      - todos-network
+    healthcheck:
+      # Note: We ping as root user since that's always available
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    # MySQL 8.0 configuration for better compatibility
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+
+  # ===========================================================================
+  # ADMINER - Database Management UI
+  # ===========================================================================
+  adminer:
+    image: adminer:latest
+    container_name: graphql-todos-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
+    depends_on:
+      - db
+    networks:
+      - todos-network
+    restart: unless-stopped
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  todos-network:
+    driver: bridge
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  mysql_data:
+    driver: local
