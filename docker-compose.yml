@@ -87,10 +87,10 @@ services:
       start_period: 30s
     restart: unless-stopped
     # MySQL 8.0 configuration for better compatibility
-    command: >
-      --default-authentication-plugin=mysql_native_password
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
+    #command: >
+    #  --default-authentication-plugin=mysql_native_password
+    #  --character-set-server=utf8mb4
+    #  --collation-server=utf8mb4_unicode_ci
 
   # ===========================================================================
   # ADMINER - Database Management UI

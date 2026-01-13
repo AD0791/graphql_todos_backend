@@ -15,7 +15,13 @@
 
 > UV managed project.
 
-You must sync first (`uv sync`)
+You must sync first
+
+1. `uv sync`
+
+2. `source ./venv/bin/activate`
+
+3. create `.env` based on the `.env.example`
 
 TO launch the server without docker, make sure you are at the root dir:
 
