@@ -1,0 +1,83 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#e1f5fe', 'primaryTextColor': '#01579b', 'primaryBorderColor': '#0288d1', 'lineColor': '#0288d1', 'secondaryColor': '#fff3e0', 'tertiaryColor': '#f3e5f5'}}}%%
+
+classDiagram
+    direction TB
+
+    %% ==================== ENUMERATIONS ====================
+    class UserRole {
+        <<enumeration>>
+        USER = "user"
+        ADMIN = "admin"
+        SUPERADMIN = "superadmin"
+        --
+        +can_manage(other_role: UserRole) bool
+    }
+
+    %% ==================== MIXINS ====================
+    class TimestampMixin {
+        <<mixin>>
+        +created_at: datetime
+        +updated_at: datetime
+        +deleted_at: datetime | None
+        +deleted_by_id: int | None
+    }
+
+    %% ==================== BASE CLASSES ====================
+    class Base {
+        <<abstract>>
+        SQLAlchemy DeclarativeBase
+    }
+
+    class BaseModel {
+        <<abstract>>
+        +id: int [PK, auto-increment]
+    }
+
+    %% ==================== MAIN ENTITIES ====================
+    class User {
+        +id: int [PK]
+        +email: str [unique, indexed]
+        +hashed_password: str
+        +full_name: str
+        +role: UserRole [default: USER]
+        +is_active: bool [default: True]
+        +created_by_id: int | None [FK → users.id]
+        +created_at: datetime
+        +updated_at: datetime
+        +deleted_at: datetime | None
+        +deleted_by_id: int | None [FK → users.id]
+        --
+        «property» +is_admin: bool
+        «property» +is_superadmin: bool
+        «property» +todo_count: int
+        --
+        +can_manage(other_user: User) bool
+        +set_password(plain_password: str) void
+        +verify_password(plain_password: str) bool
+        +soft_delete(deleted_by: User) void
+        +__repr__() str
+    }
+
+    class UserRoleHistory {
+        +id: int [PK]
+        +user_id: int [FK → users.id, indexed]
+        +old_role: UserRole
+        +new_role: UserRole
+        +changed_by_id: int [FK → users.id]
+        +changed_at: datetime
+        +reason: str | None
+    }
+
+    %% ==================== RELATIONSHIPS ====================
+    Base <|-- BaseModel : inherits
+    TimestampMixin <|-- BaseModel : inherits
+    BaseModel <|-- User : inherits
+    BaseModel <|-- UserRoleHistory : inherits
+
+    User "1" --> "0..1" User : created_by
+    User "1" --> "0..1" User : deleted_by
+    User "1" --> "*" UserRoleHistory : role_changes
+    UserRoleHistory "*" --> "1" User : changed_by
+
+    User ..> UserRole : uses
+    UserRoleHistory ..> UserRole : uses
